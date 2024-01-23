@@ -1,0 +1,559 @@
+// Fungsi Simpan template, taruh di action ketika simpan resep berhasil
+
+if (ChkTemplate.isSelected() == true) {
+                    if (!NamaTemplate.getText().equals("")) {
+                        if (Sequel.menyimpantf("resep_obat_template", "?,?,?", "No.Resep", 3,
+                                new String[]{noresepuntuktemplate, status, NamaTemplate.getText()}) == true) {
+                            JOptionPane.showMessageDialog(rootPane, "Berhasil simpan template resep!");
+                            noresepuntuktemplate = "";
+                        }
+
+                    }
+                }
+
+
+//fungsi untuk panggilpasien di DlgRawatJalan, file panggilpasien.php di file terpisah
+//tambahkan editorpane, ganti nama variabel nya 
+
+public void tangkappolinomor(String namapoli, String nomorregis) {
+        namapoliklinik = "";
+        nomorantrian = "";
+        String kodedokter = Sequel.cariIsi("select reg_periksa.kd_dokter from reg_periksa where reg_periksa.no_rawat='" + TNoRw.getText() + "'");
+        String jkdokter = Sequel.cariIsi("select dokter.jk from dokter where dokter.kd_dokter='" + kodedokter + "'");
+        namapoliklinik = namapoli;
+        nomorantrian = nomorregis;
+        String alamat = "http://" + koneksiDB.HOSTHYBRIDWEB() + ":80/webapps/panggilpasien.php?namapasien=" + TPasien.getText() + "&nomorantri=" + nomorantrian + "&namapoliklinik=" + namapoliklinik + "&jkdokter=" + jkdokter + "";
+//        System.out.println(alamat);
+        Platform.runLater(() -> {
+            WebView view = new WebView();
+
+            engine = view.getEngine();
+            engine.setJavaScriptEnabled(true);
+
+            engine.setCreatePopupHandler(new Callback<PopupFeatures, WebEngine>() {
+                @Override
+                public WebEngine call(PopupFeatures p) {
+                    Stage stage = new Stage(StageStyle.TRANSPARENT);
+                    return view.getEngine();
+                }
+            });
+            engine.getLoadWorker().exceptionProperty().addListener((ObservableValue<? extends Throwable> o, Throwable old, final Throwable value) -> {
+                if (engine.getLoadWorker().getState() == FAILED) {
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(
+                                panel,
+                                (value != null)
+                                        ? engine.getLocation() + "\n" + value.getMessage()
+                                        : engine.getLocation() + "\nUnexpected Catatan.",
+                                "Loading Catatan...",
+                                JOptionPane.ERROR_MESSAGE);
+                    });
+                }
+
+            });
+
+            jfxPanel.setScene(new Scene(view));
+
+            try {
+                engine.load(alamat);
+//                System.out.println(alamat);
+            } catch (Exception exception) {
+                engine.load(alamat);
+            }
+
+        });
+        //disini letakan nama variabel nya
+        panel.add(jfxPanel, BorderLayout.CENTER);
+    }
+
+
+
+
+    ////fungsi cetak otomatis, tambahkan di class fungsi/validasi.java
+
+    public void MyReportqryabdul(String reportName, String reportDirName, String judul, String qry, Map parameters) {
+        Properties systemProp = System.getProperties();
+
+        // Ambil current dir
+        String currentDir = systemProp.getProperty("user.dir");
+
+        File dir = new File(currentDir);
+//        System.out.println(currentDir);
+
+        File fileRpt;
+        String fullPath = "";
+//        System.out.println(dir);
+        if (dir.isDirectory()) {
+            String[] isiDir = dir.list();
+            for (String iDir : isiDir) {
+                fileRpt = new File(currentDir + File.separatorChar + iDir + File.separatorChar + reportDirName + File.separatorChar + reportName);
+//                System.out.println(fileRpt);
+                if (fileRpt.isFile()) { // Cek apakah file RptMaster.jrxml ada
+                    System.out.println("mencari report");
+                    fullPath = fileRpt.toString();
+                    System.out.println("Found Report File at : " + fullPath);
+                } // end if
+            } // end for i
+        } // end if
+
+        try {
+            ps = connect.prepareStatement(qry);
+            try {
+                String namafile = "./" + reportDirName + "/" + reportName;
+                rs = ps.executeQuery();
+                JRResultSetDataSource rsdt = new JRResultSetDataSource(rs);
+                JasperPrint jasperPrint = JasperFillManager.fillReport(namafile, parameters, rsdt);
+                JasperViewer jasperViewer = new JasperViewer(jasperPrint, false);
+                PrinterJob printerJob = PrinterJob.getPrinterJob();
+                PrintRequestAttributeSet printRequestAttributeSet = new HashPrintRequestAttributeSet();
+                printRequestAttributeSet.add(new Copies(1));
+                JRPrintServiceExporter exporter = new JRPrintServiceExporter();
+
+                exporter.setParameter(JRExporterParameter.JASPER_PRINT, jasperPrint);
+                exporter.setParameter(JRPrintServiceExporterParameter.PRINT_REQUEST_ATTRIBUTE_SET, printRequestAttributeSet);
+                exporter.setParameter(JRPrintServiceExporterParameter.PRINT_SERVICE, printerJob.getPrintService());
+                exporter.setParameter(JRPrintServiceExporterParameter.DISPLAY_PRINT_DIALOG, false);
+                exporter.exportReport();
+
+                jasperViewer.setTitle(judul);
+                Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+                jasperViewer.setSize(screen.width - 50, screen.height - 50);
+                jasperViewer.setModalExclusionType(ModalExclusionType.TOOLKIT_EXCLUDE);
+                jasperViewer.setLocationRelativeTo(null);
+                jasperViewer.setVisible(true);
+            } catch (Exception rptexcpt) {
+                System.out.println("Report Can't view because : " + rptexcpt);
+                JOptionPane.showMessageDialog(null, "Report Can't view because : " + rptexcpt);
+            } finally {
+                if (rs != null) {
+                    rs.close();
+                }
+                if (ps != null) {
+                    ps.close();
+                }
+            }
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+    }
+
+
+
+    //fungsi untuk kompilasi berkas dan kompilasi berkas bpjs, tambahkan di fungsi/validasi.java
+    //kompilasi berkas bpjs di file terpisah
+    //letakkan file detailkirimdesktop.php ke folder inacbg/page/
+    @SuppressWarnings("empty-statement")
+    public void MyReportPDFKlaim(String reportName, String reportDirName, String judul, Map parameters, String folderletak, String namafilesimpan) {
+        Properties systemProp = System.getProperties();
+
+        // Ambil current dir
+        String currentDir = systemProp.getProperty("user.dir");
+
+        File dir = new File(currentDir);
+
+        File fileRpt;
+        String fullPath = "";
+        if (dir.isDirectory()) {
+            String[] isiDir = dir.list();
+            for (String iDir : isiDir) {
+                fileRpt = new File(currentDir + File.separatorChar + iDir + File.separatorChar + reportDirName + File.separatorChar + reportName);
+                if (fileRpt.isFile()) { // Cek apakah file RptMaster.jasper ada
+                    fullPath = fileRpt.toString();
+                    System.out.println("Found Report File at : " + fullPath);
+                } // end if
+            } // end for i
+        } // end if
+
+        try {
+            try (Statement stm = connect.createStatement()) {
+                try {
+                    File f = new File("./" + reportDirName + "/" + reportName.replaceAll("jasper", "pdf"));
+                    String namafile = "./" + reportDirName + "/" + reportName;
+                    JasperPrint jasperPrint = JasperFillManager.fillReport(namafile, parameters, connect);
+                    JasperExportManager.exportReportToPdfFile(jasperPrint, "./" + folderletak + "/" + judul + namafilesimpan + ".pdf");
+//                    System.out.println("disini");
+                } catch (Exception rptexcpt) {
+                    System.out.println("Report Can't view because : " + rptexcpt);
+                    JOptionPane.showMessageDialog(null, "Report Can't view because : " + rptexcpt);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+    }
+
+    @SuppressWarnings("empty-statement")
+    public void MyReportPDFRME(String reportName, String reportDirName, String judul, Map parameters, String norekammedis, String norawat) {
+        Properties systemProp = System.getProperties();
+
+        // Ambil current dir
+        String currentDir = systemProp.getProperty("user.dir");
+
+        File dir = new File(currentDir);
+
+        File fileRpt;
+        String fullPath = "";
+        if (dir.isDirectory()) {
+            String[] isiDir = dir.list();
+            for (String iDir : isiDir) {
+                fileRpt = new File(currentDir + File.separatorChar + iDir + File.separatorChar + reportDirName + File.separatorChar + reportName);
+                if (fileRpt.isFile()) { // Cek apakah file RptMaster.jasper ada
+                    fullPath = fileRpt.toString();
+                    System.out.println("Found Report File at : " + fullPath);
+                } // end if
+            } // end for i
+        } // end if
+
+        try {
+            try (Statement stm = connect.createStatement()) {
+                try {
+                    File f = new File("./" + reportDirName + "/" + reportName.replaceAll("jasper", "pdf"));
+                    String namafile = "./" + reportDirName + "/" + reportName;
+                    JasperPrint jasperPrint = JasperFillManager.fillReport(namafile, parameters, connect);
+                    File folder = new File(koneksiDB.DIRRME() + norekammedis);
+                    File subfolder = new File(koneksiDB.DIRRME() + norekammedis + "/" + norawat.replaceAll("/", "") + "/");
+                    if (!folder.exists()) {
+                        folder.mkdir();
+                        System.out.println("buat folder " + norekammedis);
+
+                    }
+                    if (!subfolder.exists()) {
+                        subfolder.mkdir();
+                        System.out.println("kondisi buat subfolder" + norawat.replaceAll("/", ""));
+                    }
+
+                    JasperExportManager.exportReportToPdfFile(jasperPrint, koneksiDB.DIRRME() + norekammedis + "/" + norawat.replaceAll("/", "") + "/" + judul + norawat.replaceAll("/", "") + ".pdf");
+//                    JasperExportManager.exportReportToPdfFile(jasperPrint, "./" + reportDirName + "/" + reportName.replaceAll("jasper", "pdf"));
+//                    Desktop.getDesktop().open(f);
+                    if (Sequel.cariInteger("select count(berkas_digital_perawatan.no_rawat) from berkas_digital_perawatan where berkas_digital_perawatan.no_rawat='" + norawat + "' and berkas_digital_perawatan.lokasi_file like '%" + judul + norawat.replaceAll("/", "") + "%'") > 0) {
+                        Sequel.queryu2("delete from berkas_digital_perawatan where berkas_digital_perawatan.no_rawat= ? and berkas_digital_perawatan.lokasi_file like ?", 2, new String[]{
+                            norawat, "%" + judul + norawat.replaceAll("/", "") + "%"
+                        });
+                        Sequel.menyimpan("berkas_digital_perawatan", "?,?,?", 3, new String[]{
+                            norawat, judul, "pages/berkasrm/" + norekammedis + "/" + norawat.replaceAll("/", "") + "/" + judul + norawat.replaceAll("/", "") + ".pdf"
+                        });
+                    } else {
+                        Sequel.menyimpan("berkas_digital_perawatan", "?,?,?", 3, new String[]{
+                            norawat, judul, "pages/berkasrm/" + norekammedis + "/" + norawat.replaceAll("/", "") + "/" + judul + norawat.replaceAll("/", "") + ".pdf"
+                        });
+                    }
+
+                } catch (Exception rptexcpt) {
+                    System.out.println("Report Can't view because : " + rptexcpt);
+                    JOptionPane.showMessageDialog(null, "Report Can't view because : " + rptexcpt);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+    }
+
+    @SuppressWarnings("empty-statement")
+    public void MyReportPDFRMEMerging(String reportName, String reportDirName, String judul, Map parameters, String norekammedis, String norawat, int nourut) {
+        Properties systemProp = System.getProperties();
+
+        // Ambil current dir
+        String currentDir = systemProp.getProperty("user.dir");
+
+        File dir = new File(currentDir);
+
+        File fileRpt;
+        String fullPath = "";
+        if (dir.isDirectory()) {
+            String[] isiDir = dir.list();
+            for (String iDir : isiDir) {
+                fileRpt = new File(currentDir + File.separatorChar + iDir + File.separatorChar + reportDirName + File.separatorChar + reportName);
+                if (fileRpt.isFile()) { // Cek apakah file RptMaster.jasper ada
+                    fullPath = fileRpt.toString();
+                    System.out.println("Found Report File at : " + fullPath);
+                } // end if
+            } // end for i
+        } // end if
+
+        try {
+            try (Statement stm = connect.createStatement()) {
+                try {
+                    File f = new File("./" + reportDirName + "/" + reportName.replaceAll("jasper", "pdf"));
+                    String namafile = "./" + reportDirName + "/" + reportName;
+                    JasperPrint jasperPrint = JasperFillManager.fillReport(namafile, parameters, connect);
+                    File folder = new File(koneksiDB.DIRRME() + norekammedis);
+                    File subfolder = new File(koneksiDB.DIRRME() + norekammedis + "/" + norawat.replaceAll("/", "") + "/");
+                    if (!folder.exists()) {
+                        folder.mkdir();
+                        System.out.println("buat folder " + norekammedis);
+
+                    }
+                    if (!subfolder.exists()) {
+                        subfolder.mkdir();
+                        System.out.println("kondisi buat subfolder" + norawat.replaceAll("/", ""));
+                    }
+
+                    JasperExportManager.exportReportToPdfFile(jasperPrint, koneksiDB.DIRRME() + norekammedis + "/" + norawat.replaceAll("/", "") + "/" + judul + norawat.replaceAll("/", "") + "-" + nourut + ".pdf");
+//                    JasperExportManager.exportReportToPdfFile(jasperPrint, "./" + reportDirName + "/" + reportName.replaceAll("jasper", "pdf"));
+//                    Desktop.getDesktop().open(f);
+                    System.out.println("dobel berkas");
+                    if (Sequel.cariInteger("select count(berkas_digital_perawatan.no_rawat) from berkas_digital_perawatan where berkas_digital_perawatan.no_rawat='" + norawat + "' and berkas_digital_perawatan.lokasi_file like '%" + judul + norawat.replaceAll("/", "") + "-" + nourut + "%'") > 0) {
+                        Sequel.queryu2("delete from berkas_digital_perawatan where berkas_digital_perawatan.no_rawat= ? and berkas_digital_perawatan.lokasi_file like ?", 2, new String[]{
+                            norawat, "%" + judul + norawat.replaceAll("/", "") + "-" + nourut + "%"
+                        });
+                        Sequel.menyimpan("berkas_digital_perawatan", "?,?,?", 3, new String[]{
+                            norawat, judul, "pages/berkasrm/" + norekammedis + "/" + norawat.replaceAll("/", "") + "/" + judul + norawat.replaceAll("/", "") + "-" + nourut + ".pdf"
+                        });
+                    } else {
+                        Sequel.menyimpan("berkas_digital_perawatan", "?,?,?", 3, new String[]{
+                            norawat, judul, "pages/berkasrm/" + norekammedis + "/" + norawat.replaceAll("/", "") + "/" + judul + norawat.replaceAll("/", "") + "-" + nourut + ".pdf"
+                        });
+                    }
+
+                } catch (Exception rptexcpt) {
+                    System.out.println("Report Can't view because : " + rptexcpt);
+                    JOptionPane.showMessageDialog(null, "Report Can't view because : " + rptexcpt);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+    }
+
+    @SuppressWarnings("empty-statement")
+    public void MyReportPDFRMEMergingKlaimBPJS(String reportName, String reportDirName, String judul, Map parameters, String norekammedis, String norawat, int nourut) {
+        Properties systemProp = System.getProperties();
+
+        // Ambil current dir
+        String currentDir = systemProp.getProperty("user.dir");
+
+        File dir = new File(currentDir);
+
+        File fileRpt;
+        String fullPath = "";
+        if (dir.isDirectory()) {
+            String[] isiDir = dir.list();
+            for (String iDir : isiDir) {
+                fileRpt = new File(currentDir + File.separatorChar + iDir + File.separatorChar + reportDirName + File.separatorChar + reportName);
+                if (fileRpt.isFile()) { // Cek apakah file RptMaster.jasper ada
+                    fullPath = fileRpt.toString();
+                    System.out.println("Found Report File at : " + fullPath);
+                } // end if
+            } // end for i
+        } // end if
+
+        try {
+            try (Statement stm = connect.createStatement()) {
+                try {
+                    File f = new File("./" + reportDirName + "/" + reportName.replaceAll("jasper", "pdf"));
+                    String namafile = "./" + reportDirName + "/" + reportName;
+                    JasperPrint jasperPrint = JasperFillManager.fillReport(namafile, parameters, connect);
+                    File folder = new File(koneksiDB.DIRRME() + norekammedis);
+                    File subfolder = new File(koneksiDB.DIRRME() + norekammedis + "/" + norawat.replaceAll("/", "") + "/");
+                    if (!folder.exists()) {
+                        folder.mkdir();
+                        System.out.println("buat folder " + norekammedis);
+
+                    }
+                    if (!subfolder.exists()) {
+                        subfolder.mkdir();
+                        System.out.println("kondisi buat subfolder" + norawat.replaceAll("/", ""));
+                    }
+
+                    JasperExportManager.exportReportToPdfFile(jasperPrint, koneksiDB.DIRRME() + norekammedis + "/" + norawat.replaceAll("/", "") + "/" + judul + norawat.replaceAll("/", "") + "-" + nourut + ".pdf");
+                    System.out.println("dobel berkas");
+                    if (Sequel.cariInteger("select count(berkas_digital_perawatan.no_rawat) from berkas_digital_perawatan where berkas_digital_perawatan.no_rawat='" + norawat + "' and berkas_digital_perawatan.lokasi_file like '%" + judul + norawat.replaceAll("/", "") + "-" + nourut + "%'") > 0) {
+                        Sequel.queryu2("delete from berkas_digital_perawatan where berkas_digital_perawatan.no_rawat= ? and berkas_digital_perawatan.lokasi_file like ?", 2, new String[]{
+                            norawat, "%" + judul + norawat.replaceAll("/", "") + "-" + nourut + "%"
+                        });
+                        Sequel.menyimpan("berkas_digital_perawatan", "?,?,?", 3, new String[]{
+                            norawat, judul, "pages/berkasrm/" + norekammedis + "/" + norawat.replaceAll("/", "") + "/" + judul + norawat.replaceAll("/", "") + "-" + nourut + ".pdf"
+                        });
+                    } else {
+                        Sequel.menyimpan("berkas_digital_perawatan", "?,?,?", 3, new String[]{
+                            norawat, judul, "pages/berkasrm/" + norekammedis + "/" + norawat.replaceAll("/", "") + "/" + judul + norawat.replaceAll("/", "") + "-" + nourut + ".pdf"
+                        });
+                    }
+
+                } catch (Exception rptexcpt) {
+                    System.out.println("Report Can't view because : " + rptexcpt);
+                    JOptionPane.showMessageDialog(null, "Report Can't view because : " + rptexcpt);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+    }
+
+    @SuppressWarnings("empty-statement")
+    public void ReportKompilasiBerkas(String reportName, String reportDirName, String judul, String qry, Map parameters, String norawat, String norekammedis, String namareport) {
+        Properties systemProp = System.getProperties();
+
+        // Ambil current dir
+        String currentDir = systemProp.getProperty("user.dir");
+        File dir = new File(currentDir);
+        File fileRpt;
+        String fullPath = "";
+        if (dir.isDirectory()) {
+            String[] isiDir = dir.list();
+            for (String iDir : isiDir) {
+                fileRpt = new File(currentDir + File.separatorChar + iDir + File.separatorChar + reportDirName + File.separatorChar + reportName);
+                if (fileRpt.isFile()) { // Cek apakah file RptMaster.jasper ada
+                    fullPath = fileRpt.toString();
+                    System.out.println("Found Report File at : " + fullPath);
+                } // end if
+            } // end for i
+        } // end if
+        try {
+            ps = connect.prepareStatement(qry);
+            try {
+
+                rs = ps.executeQuery();
+                JRResultSetDataSource rsdt = new JRResultSetDataSource(rs);
+                File f = new File(koneksiDB.DIRRME() + norekammedis + "/" + norawat.replaceAll("/", "") + "/" + namareport + norawat + ".pdf");
+                String namafile = "./" + reportDirName + "/" + reportName;
+                JasperPrint jasperPrint = JasperFillManager.fillReport(namafile, parameters, rsdt);
+
+                File folder = new File(koneksiDB.DIRRME() + norekammedis);
+                File subfolder = new File(koneksiDB.DIRRME() + norekammedis + "/" + norawat.replaceAll("/", "") + "/");
+                if (!folder.exists()) {
+                    folder.mkdir();
+                    System.out.println("kondisi buat folder");
+
+                }
+                if (!subfolder.exists()) {
+                    subfolder.mkdir();
+                    System.out.println("kondisi buat subfolder");
+                }
+                System.out.println("menyimpan ke " + koneksiDB.DIRRME() + norekammedis + "/" + norawat.replaceAll("/", ""));
+                JasperExportManager.exportReportToPdfFile(jasperPrint, koneksiDB.DIRRME() + norekammedis + "/" + norawat.replaceAll("/", "") + "/" + namareport + norawat.replaceAll("/", "") + ".pdf");
+
+                if (Sequel.cariInteger("select count(berkas_digital_perawatan.no_rawat) from berkas_digital_perawatan where berkas_digital_perawatan.no_rawat='" + norawat + "' and berkas_digital_perawatan.lokasi_file like '%" + namareport + norawat.replaceAll("/", "") + "%'") > 0) {
+                    Sequel.queryu2("delete from berkas_digital_perawatan where berkas_digital_perawatan.no_rawat= ? and berkas_digital_perawatan.lokasi_file like ?", 2, new String[]{
+                        norawat, "%" + namareport + norawat.replaceAll("/", "") + "%"
+                    });
+                    Sequel.menyimpan("berkas_digital_perawatan", "?,?,?", 3, new String[]{
+                        norawat, namareport, "pages/berkasrm/" + norekammedis + "/" + norawat.replaceAll("/", "") + "/" + namareport + norawat.replaceAll("/", "") + ".pdf"
+                    });
+                } else {
+                    Sequel.menyimpan("berkas_digital_perawatan", "?,?,?", 3, new String[]{
+                        norawat, namareport, "pages/berkasrm/" + norekammedis + "/" + norawat.replaceAll("/", "") + "/" + namareport + norawat.replaceAll("/", "") + ".pdf"
+                    });
+                }
+
+//                Desktop.getDesktop().open(f);
+            } catch (Exception rptexcpt) {
+                System.out.println("Report Can't view because : " + rptexcpt);
+                JOptionPane.showMessageDialog(null, "Report Can't view because : " + rptexcpt);
+            }
+
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+    }
+
+
+
+//fungsi tambahan di ws inacbg, tambahkan fungsinya di webapps/inacbg/conf/wsinacbg.php dan webapps/inacbg/conf/wsinacbg2.php 
+function MenghapusKlaim($nomor_sep, $coder_nik)
+{
+    EditUlangKlaim($nomor_sep);
+    $request = '{
+                        "metadata": {
+                            "method":"delete_claim"
+                        },
+                        "data": {
+                            "nomor_sep":"' . $nomor_sep . '",
+                            "coder_nik":"' . $coder_nik . '"
+                        }
+                  }';
+    $msg = Request($request);
+    echo "<h3>Pesan : " . $msg['metadata']['code'] . ":" . $msg['metadata']['message'] . ". <br>Halaman akan refresh dalam 1 detik</h3>";
+    if ($msg['metadata']['code'] == "200") {
+
+        Hapus2("inacbg_grouping_stage12", "no_sep='" . $nomor_sep . "'");
+        Hapus2("inacbg_klaim_baru2", "no_sep='" . $nomor_sep . "'");
+        Hapus2("inacbg_klaim_baru", "no_sep='" . $nomor_sep . "'");
+        Hapus2("inacbg_data_terkirim2", "no_sep='" . $nomor_sep . "'");
+        Hapus2("inacbg_data_terkirim", "no_sep='" . $nomor_sep . "'");
+        Hapus2("inacbg_data_terkirim_final", "no_sep='" . $nomor_sep . "'");
+        Hapus2("inacbg_data_terkirim_final_dc", "no_sep='" . $nomor_sep . "'");
+        echo "<meta http-equiv='refresh' content='1'>";
+    }
+    echo $msg['metadata']['message'] . "";
+}
+
+
+function GetHistoryKlaim($norekammedis)
+{
+    $kueryambilriwayat = "SELECT
+	inacbg_grouping_stage12.no_sep,
+	bridging_sep.tglsep,bridging_sep.jnspelayanan,bridging_sep.tglpulang,
+	inacbg_grouping_stage12.code_cbg,
+	inacbg_grouping_stage12.deskripsi,
+	inacbg_grouping_stage12.tarif,
+	bridging_sep.nomr 
+FROM
+	bridging_sep
+	INNER JOIN inacbg_grouping_stage12 ON bridging_sep.no_sep = inacbg_grouping_stage12.no_sep
+    where bridging_sep.nomr='$norekammedis' order by 1 desc";
+
+    $hasilriwayat = bukaquery($kueryambilriwayat);
+    $jumlahriwayat = mysqli_num_rows($hasilriwayat);
+    if (mysqli_num_rows($hasilriwayat) != 0) {
+        echo "<table width='100%' border='0' align='center' cellpadding='0' cellspacing='0' class='table table-sm table-striped table-bordered table-hover table-responsive'>
+        <tr class='thead-dark'>
+        <th><div align='center'>No SEP</div></th>
+        <th><div align='center'>TglSEP</div></th>
+        <th><div align='center'>CODECBG</div></th>
+        <th><div align='center'>DESKRIPSI</div></th>
+        <th><div align='center'>TARIF</div></th>
+        <th><div align='center'>Status</div></th>
+        <th><div align='center'>TglPulang</div></th>
+        <th><div align='center'>StatusKirim</div></th>
+    </tr>
+    </thead>";
+        while ($barisan = mysqli_fetch_array($hasilriwayat)) {
+            $statuskirim = "";
+            if (getOne("select count(inacbg_data_terkirim_final.no_sep) from inacbg_data_terkirim_final where inacbg_data_terkirim_final.no_sep='" . $barisan['no_sep'] . "'") > 0) {
+                $statuskirim = "Final";
+                if (getOne("select count(inacbg_data_terkirim_final_dc.no_sep) from inacbg_data_terkirim_final_dc where inacbg_data_terkirim_final_dc.no_sep='" . $barisan['no_sep'] . "'") > 0) {
+                    $statuskirim = "Terkirim DC";
+                }
+            }
+            echo "<tr>
+        <td>" . $barisan['no_sep'] . "</td>
+        <td>" . $barisan['tglsep'] . "</td>
+        <td>" . $barisan['code_cbg'] . "</td>
+        <td>" . $barisan['deskripsi'] . "</td>
+        <td>" . $barisan['tarif'] . "</td>
+        <td>" . str_replace('2', 'Ralan', str_replace('1', 'Ranap', $barisan['jnspelayanan'])) . "</td>
+        <td>" . $barisan['tglpulang'] . "</td>
+        <td>" . $statuskirim . "</td>
+        </tr>";
+        }
+        echo "</table>";
+    }
+}
+
+function PrintClaimData($nomor_sep)
+{
+    $request = '{
+                        "metadata": {
+                            "method":"claim_print"
+                        },
+                        "data": {
+                            "nomor_sep":"' . $nomor_sep . '"
+                        }
+                   }';
+    $msg = Request($request);
+    // echo "Data : " . $request;
+    if ($msg['metadata']['code'] == "200") {
+        // return $msg['metadata']['code'];
+        Hapus2("inacbg_data_printclaim", "no_sep='" . $nomor_sep . "'");
+        InsertData2("inacbg_data_printclaim", "'" . $nomor_sep . "','" . $msg['data'] . "'");
+        echo "<h4>PDF Hasil NCC Tersedia</h4>";
+        MengambilDetailKlaim($nomor_sep);
+    } else {
+        echo "<h4>PDF Hasil NCC Belum Tersedia.</h4>";
+    }
+}
+
+
+//untuk generate invoice pdf, letakan file billingtampil.php dan save_pdf.php di webapps/berkasrawat/pages/
+
